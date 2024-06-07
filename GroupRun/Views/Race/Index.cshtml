@@ -17,8 +17,9 @@
                             <p class="card-text">@item.Description</p>
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="btn-group">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">View</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">Edit</button>
+                                    <a class="btn btn-primary" asp-controller="Race" asp-action="Detail" asp-route-id="@item.Id">Detail</a>
+                                    <a class="btn btn-warning" asp-controller="Race" asp-action="Edit" asp-route-id="@item.Id">Edit</a>
+                                    <a class="btn btn-danger" asp-controller="Race" asp-action="Create" asp-route-id="">Create</a>
                                 </div>
                                 <small class="text-muted">@item.RaceCategory</small>
                             </div>

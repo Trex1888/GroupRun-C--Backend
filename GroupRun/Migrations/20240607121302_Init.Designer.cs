@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GroupRun.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240604075931_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20240607121302_Init")]
+    partial class Init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -44,9 +44,6 @@ namespace GroupRun.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ZipCode")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.ToTable("Addresses");
@@ -54,11 +51,8 @@ namespace GroupRun.Migrations
 
             modelBuilder.Entity("GroupRun.Models.AppUser", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int?>("AddressId")
                         .HasColumnType("int");
@@ -84,22 +78,25 @@ namespace GroupRun.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
-                    b.Property<int?>("AddressId")
+                    b.Property<int>("AddressId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("AppUserId")
-                        .HasColumnType("int");
+                    b.Property<string>("AppUserId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("ClubCategory")
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Image")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<byte[]>("Image")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<string>("Title")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -122,37 +119,22 @@ namespace GroupRun.Migrations
                     b.Property<int>("AddressId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("AppUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Contact")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("AppUserId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("EntryFee")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Facebook")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Image")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<byte[]>("Image")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<int>("RaceCategory")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("StartTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Title")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Twitter")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Website")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -177,10 +159,12 @@ namespace GroupRun.Migrations
                 {
                     b.HasOne("GroupRun.Models.Address", "Address")
                         .WithMany()
-                        .HasForeignKey("AddressId");
+                        .HasForeignKey("AddressId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("GroupRun.Models.AppUser", "AppUser")
-                        .WithMany("Clubs")
+                        .WithMany()
                         .HasForeignKey("AppUserId");
 
                     b.Navigation("Address");
@@ -197,19 +181,12 @@ namespace GroupRun.Migrations
                         .IsRequired();
 
                     b.HasOne("GroupRun.Models.AppUser", "AppUser")
-                        .WithMany("Races")
+                        .WithMany()
                         .HasForeignKey("AppUserId");
 
                     b.Navigation("Address");
 
                     b.Navigation("AppUser");
-                });
-
-            modelBuilder.Entity("GroupRun.Models.AppUser", b =>
-                {
-                    b.Navigation("Clubs");
-
-                    b.Navigation("Races");
                 });
 #pragma warning restore 612, 618
         }
