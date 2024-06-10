@@ -8,12 +8,12 @@ namespace GroupRun.Controllers
     public class ClubController : Controller
     {
         private readonly IClubRepository _clubRepository;
-        private readonly IPhotoService _photoService;
+        private readonly IWebHostEnvironment _environment;
 
-        public ClubController(IClubRepository clubRepository, IPhotoService photoService)
+        public ClubController(IClubRepository clubRepository, IWebHostEnvironment environment)
         {
             _clubRepository = clubRepository;
-            _photoService = photoService;
+            _environment = environment;
         }
 
         public async Task<IActionResult> Index()
@@ -35,34 +35,44 @@ namespace GroupRun.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CreateClubViewModel clubVM)
+        public async Task<IActionResult> Create(CreateClubViewModel clubView)
         {
-            if (ModelState.IsValid)
+            if (clubView.Image == null)
             {
-                var result = await _photoService.AddPhotoAsync(clubVM.Image);
+                ModelState.AddModelError("Image", "Image is required.");
+            }
 
-                var club = new Club
+            if (!ModelState.IsValid)
+            {
+                return View(clubView);
+            }
+
+            string newFileName = DateTime.Now.ToString("yyyyMMddHHmmssfff") + Path.GetExtension(clubView.Image!.FileName);
+
+            string imageFullPath = Path.Combine(_environment.WebRootPath, "Images", newFileName);
+            using (var stream = System.IO.File.Create(imageFullPath))
+            {
+                await clubView.Image.CopyToAsync(stream);
+            }
+
+            var club = new Club
+            {
+                Title = clubView.Title,
+                Description = clubView.Description,
+                Image = "/Images/" + newFileName,
+                ClubCategory = clubView.ClubCategory,
+                Address = new Address
                 {
-                    Title = clubVM.Title,
-                    Description = clubVM.Description,
-                    Image = result.Url.ToString(),
-                    ClubCategory = clubVM.ClubCategory,
-                    Address = new Address
-                    {
-                        Street = clubVM.Address.Street,
-                        City = clubVM.Address.City,
-                        State = clubVM.Address.State,
-                    }
-                };
-                _clubRepository.Add(club);
-                return RedirectToAction("Index");
-            }
-            else
-            {
-                ModelState.AddModelError("", "Photo upload failed");
-            }
+                    Street = clubView.Address.Street,
+                    City = clubView.Address.City,
+                    State = clubView.Address.State,
+                }
+            };
 
-            return View(clubVM);
+            _clubRepository.Add(club);
+            _clubRepository.Save();
+
+            return RedirectToAction("Index");
         }
 
         public async Task<IActionResult> Edit(int id)
@@ -81,45 +91,59 @@ namespace GroupRun.Controllers
             return View(clubVm);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Edit(int id, EditClubViewModel clubVM)
-        {
-            if (!ModelState.IsValid)
-            {
-                ModelState.AddModelError("", "Failed to edit club");
-                return View("Edit", clubVM);
-            }
+        //[HttpPost]
+        //public async Task<IActionResult> Edit(int id, EditClubViewModel clubVM)
+        //{
+        //    if (!ModelState.IsValid)
+        //    {
+        //        ModelState.AddModelError("", "Failed to edit club");
+        //        return View("Edit", clubVM);
+        //    }
 
-            var userClub = await _clubRepository.GetByIdAsyncNoTracking(id);
+        //    var userClub = await _clubRepository.GetByIdAsyncNoTracking(id);
 
-            if (userClub == null)
-            {
-                return View("Error");
-            }
+        //    if (userClub == null)
+        //    {
+        //        return View("Error");
+        //    }
 
-            var photoResult = await _photoService.AddPhotoAsync(clubVM.Image);
+        //    var photoResult = await _photoService.AddPhotoAsync(clubVM.Image);
 
-            var club = new Club
-            {
-                Id = id,
-                Title = clubVM.Title,
-                Description = clubVM.Description,
-                Image = photoResult.Url.ToString(),
-                AddressId = clubVM.AddressId,
-                Address = clubVM.Address,
-            };
+        //    var club = new Club
+        //    {
+        //        Id = id,
+        //        Title = clubVM.Title,
+        //        Description = clubVM.Description,
+        //        Image = photoResult.Url.ToString(),
+        //        AddressId = clubVM.AddressId,
+        //        Address = clubVM.Address,
+        //    };
 
-            _clubRepository.Update(club);
-            return RedirectToAction("Index");
-        }
+        //    _clubRepository.Update(club);
+        //    return RedirectToAction("Index");
+        //}
     }
 }
 
+
+//private readonly IPhotoService _photoService;
+
+//public IActionResult Index()
+//{
+//    var clubs = _context.Clubs.ToList();
+//    return View(clubs);
+//}
 
 //public async Task<IActionResult> Index()
 //{
 //    IEnumerable<Club> clubs = await _clubRepository.GetAll();
 //    return View(clubs);
+//}
+
+//public IActionResult Detail(int id)
+//{
+//    Club club = _context.Clubs.FirstOrDefault(c => c.Id == id);
+//    return View(club);
 //}
 
 //public async Task<IActionResult> Detail(int id)
@@ -128,22 +152,34 @@ namespace GroupRun.Controllers
 //    return View(club);
 //}
 
-//[HttpGet]
-//public IActionResult Create()
+//[HttpPost]
+//public async Task<IActionResult> Create(CreateClubViewModel clubVM)
 //{
-//    return View();
-//}
+//    if (ModelState.IsValid)
+//    {
+//        var result = await _photoService.AddPhotoAsync(clubVM.Image);
 
+//        var club = new Club
+//        {
+//            Title = clubVM.Title,
+//            Description = clubVM.Description,
+//            Image = result.Url.ToString(),
+//            ClubCategory = clubVM.ClubCategory,
+//            Address = new Address
+//            {
+//                Street = clubVM.Address.Street,
+//                City = clubVM.Address.City,
+//                State = clubVM.Address.State,
+//            }
+//        };
+//        _clubRepository.Add(club);
+//        return RedirectToAction("Index");
+//    }
+//    else
+//    {
+//        ModelState.AddModelError("", "Photo upload failed");
+//    }
 
-//public IActionResult Index()
-//{
-//    var clubs = _context.Clubs.ToList();
-//    return View(clubs);
-//}
-
-//public IActionResult Detail(int id)
-//{
-//    Club club = _context.Clubs.FirstOrDefault(c => c.Id == id);
-//    return View(club);
+//    return View(clubVM);
 //}
 

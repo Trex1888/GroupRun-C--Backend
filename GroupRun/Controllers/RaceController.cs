@@ -8,12 +8,14 @@ namespace GroupRun.Controllers
     public class RaceController : Controller
     {
         private readonly IRaceRepository _raceRepository;
-        private readonly IPhotoService _photoService;
+        private readonly IWebHostEnvironment _environment;
+        // private readonly IPhotoService _photoService;
 
-        public RaceController(IRaceRepository raceRepo, IPhotoService photoService)
+        public RaceController(IRaceRepository raceRepo, IWebHostEnvironment environment)
         {
             _raceRepository = raceRepo;
-            _photoService = photoService;
+            _environment = environment;
+            //  _photoService = photoService;
 
         }
         public async Task<IActionResult> Index()
@@ -35,46 +37,75 @@ namespace GroupRun.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CreateRaceViewModel raceVM)
+        public async Task<IActionResult> Create(CreateRaceViewModel raceView)
         {
-            if (ModelState.IsValid)
+            if (raceView.Image == null)
             {
-                var result = await _photoService.AddPhotoAsync(raceVM.Image);
+                ModelState.AddModelError("Image", "Image is required.");
+            }
 
-                var race = new Race
+            if (!ModelState.IsValid)
+            {
+                return View(raceView);
+            }
+
+            string newFileName = DateTime.Now.ToString("yyyyMMddHHmmssfff") + Path.GetExtension(raceView.Image!.FileName);
+
+            string imageFullPath = Path.Combine(_environment.WebRootPath, "Images", newFileName);
+            using (var stream = System.IO.File.Create(imageFullPath))
+            {
+                await raceView.Image.CopyToAsync(stream);
+            }
+
+            var race = new Race
+            {
+                Title = raceView.Title,
+                Description = raceView.Description,
+                Image = "/Images/" + newFileName,
+                RaceCategory = raceView.RaceCategory,
+                Address = new Address
                 {
-                    Title = raceVM.Title,
-                    Description = raceVM.Description,
-                    Image = result.Url.ToString(),
-                    RaceCategory = raceVM.RaceCategory,
-                    Address = new Address
-                    {
-                        Street = raceVM.Address.Street,
-                        City = raceVM.Address.City,
-                        State = raceVM.Address.State,
-                    }
-                };
-                _raceRepository.Add(race);
-                return RedirectToAction("Index");
-            }
-            else
-            {
-                ModelState.AddModelError("", "Photo upload failed");
-            }
+                    Street = raceView.Address.Street,
+                    City = raceView.Address.City,
+                    State = raceView.Address.State,
+                }
+            };
 
-            return View(raceVM);
+            _raceRepository.Add(race);
+            _raceRepository.Save();
+
+            return RedirectToAction("Index");
         }
 
         //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Create(Race race)
+        //public async Task<IActionResult> Create(CreateRaceViewModel raceVM)
         //{
-        //    if (!ModelState.IsValid)
+        //    if (ModelState.IsValid)
         //    {
-        //        return View(race);
+        //        var result = await _photoService.AddPhotoAsync(raceVM.Image);
+
+        //        var race = new Race
+        //        {
+        //            Title = raceVM.Title,
+        //            Description = raceVM.Description,
+        //            Image = result.Url.ToString(),
+        //            RaceCategory = raceVM.RaceCategory,
+        //            Address = new Address
+        //            {
+        //                Street = raceVM.Address.Street,
+        //                City = raceVM.Address.City,
+        //                State = raceVM.Address.State,
+        //            }
+        //        };
+        //        _raceRepository.Add(race);
+        //        return RedirectToAction("Index");
         //    }
-        //    _raceRepository.Add(race);
-        //    return RedirectToAction("Index");
+        //    else
+        //    {
+        //        ModelState.AddModelError("", "Photo upload failed");
+        //    }
+
+        //    return View(raceVM);
         //}
     }
 }
