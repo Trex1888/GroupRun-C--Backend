@@ -2,7 +2,8 @@
 @using GroupRun.Data.Enum
 @using GroupRun.ViewModels
 
-<form asp-action="Create" method="post" enctype="multipart/form-data">
+<form method="post" asp-action="Create" enctype="multipart/form-data">
+    <input type="hidden" id="AppUserId" name="AppUserId" asp-for="AppUserId"/>
     <div class="form-group">
         <label asp-for="Title" class="control-label"></label>
         <input asp-for="Title" class="form-control" />
@@ -35,12 +36,8 @@
 
     <div class="form-group mb-1">
         <label asp-for="ClubCategory" class="control-label"></label>
-        <select asp-for="ClubCategory" class="form-control">
-            <option value="">Select Category</option>
-            @foreach (var category in Enum.GetValues(typeof(ClubCategory)))
-            {
-                <option value="@category">@category</option>
-            }
+        <select asp-for="ClubCategory" class="form-control" asp-items="@(Html.GetEnumSelectList<ClubCategory>())">
+            <option value="">--Select--</option>
         </select>
         <span asp-validation-for="ClubCategory" class="text-danger"></span>
     </div>

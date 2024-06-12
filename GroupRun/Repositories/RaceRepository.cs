@@ -38,7 +38,7 @@ namespace GroupRun.Repositories
 
         public async Task<Race> GetByIdAsyncNoTracking(int id)
         {
-            return await _context.Races.Include(c => c.Address).FirstOrDefaultAsync(c => c.Id == id);
+            return await _context.Races.Include(i => i.Address).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         }
 
         public async Task<IEnumerable<Race>> GetRaceByCity(string city)

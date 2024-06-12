@@ -17,5 +17,6 @@ namespace GroupRun.ViewModels
         public IFormFile? Image { get; set; }
         [Required]
         public ClubCategory ClubCategory { get; set; }
+        public string AppUserId { get; set; }
     }
 }
