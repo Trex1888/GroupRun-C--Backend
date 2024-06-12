@@ -1,5 +1,7 @@
 ﻿using GroupRun.Interfaces;
+using GroupRun.Models;
 using GroupRun.ViewModels;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GroupRun.Controllers
@@ -7,10 +9,16 @@ namespace GroupRun.Controllers
     public class UserController : Controller
     {
         private readonly IUserRepository _userRepository;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IDashboardRepository _dashboardRepository;
+        private readonly UserManager<AppUser> _userManager;
 
-        public UserController(IUserRepository userRepository)
+        public UserController(IUserRepository userRepository, IHttpContextAccessor contextAccessor, IDashboardRepository dashboardRepository, UserManager<AppUser> userManager)
         {
             _userRepository = userRepository;
+            _httpContextAccessor = contextAccessor;
+            _dashboardRepository = dashboardRepository;
+            _userManager = userManager;
         }
 
         [HttpGet("users")]
@@ -26,9 +34,11 @@ namespace GroupRun.Controllers
                     Pace = user.Pace,
                     Mileage = user.Mileage,
                     UserName = user.UserName,
+                    ProfileImageUrl = user.ProfileImageUrl
                 };
                 result.Add(userViewModel);
             }
+
             return View(result);
         }
 
@@ -48,7 +58,73 @@ namespace GroupRun.Controllers
                 Mileage = user.Mileage,
                 UserName = user.UserName,
             };
+
             return View(userDetailViewModel);
+        }
+
+        [HttpGet]
+
+        public async Task<IActionResult> EditProfile()
+        {
+            var curUserId = _httpContextAccessor.HttpContext.User.GetUserId();
+            var user = await _dashboardRepository.GetUserById(curUserId);
+
+            if (user == null)
+            {
+                return View("EditProfile");
+            }
+
+            var editProfileViewModel = new EditProfileViewModel()
+            {
+                Id = curUserId,
+                Pace = user.Pace,
+                Mileage = user.Mileage,
+                City = user.City,
+                State = user.State,
+                ProfileImageUrl = user.ProfileImageUrl,
+            };
+
+            return View(editProfileViewModel);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EditProfile(EditProfileViewModel editProfileViewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                ModelState.AddModelError("", "Failed to edit profile");
+                return View("EditProfile", editProfileViewModel);
+            }
+
+            var user = await _dashboardRepository.GetByIdNoTracking(editProfileViewModel.Id);
+
+            if (user == null)
+            {
+                return View(editProfileViewModel);
+            }
+
+            if (editProfileViewModel.Image != null) // only update profile image
+            {
+                var imageBytes = await ConvertImageToByteArrayAsync(editProfileViewModel.Image);
+                var base64String = Convert.ToBase64String(imageBytes);
+
+                user.ProfileImageUrl = base64String;
+
+                await _userManager.UpdateAsync(user);
+
+                return View(editProfileViewModel);
+            }
+
+            return RedirectToAction("Detail", "User", new { user.Id });
+        }
+
+        private static async Task<byte[]> ConvertImageToByteArrayAsync(IFormFile image)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                await image.CopyToAsync(memoryStream);
+                return memoryStream.ToArray();
+            }
         }
     }
 }
