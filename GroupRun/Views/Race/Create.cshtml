@@ -36,9 +36,7 @@
 
     <div class="form-group mb-1">
         <label asp-for="RaceCategory" class="control-label"></label>
-        <select asp-for="RaceCategory" class="form-control" asp-items="@(Html.GetEnumSelectList<RaceCategory>())">
-            <option value="">--Select--</option>
-        </select>
+        <select asp-for="RaceCategory" class="form-control" asp-items="@(Html.GetEnumSelectList<RaceCategory>())"></select>
         <span asp-validation-for="RaceCategory" class="text-danger"></span>
     </div>
 

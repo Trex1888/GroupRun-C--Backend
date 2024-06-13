@@ -17,12 +17,15 @@ namespace GroupRun.Controllers
             _environment = environment;
             _httpContextAccessor = httpContextAccessor;
         }
+
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
             IEnumerable<Race> races = await _raceRepository.GetAll();
             return View(races);
         }
 
+        [HttpGet]
         public async Task<IActionResult> Detail(int id)
         {
             Race race = await _raceRepository.GetByIdAsync(id);
@@ -34,6 +37,7 @@ namespace GroupRun.Controllers
         {
             var curUserId = _httpContextAccessor.HttpContext.User.GetUserId();
             var createRaceViewModel = new CreateRaceViewModel { AppUserId = curUserId };
+
             return View(createRaceViewModel);
         }
 

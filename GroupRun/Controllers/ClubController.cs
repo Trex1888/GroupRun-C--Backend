@@ -31,7 +31,6 @@ namespace GroupRun.Controllers
             return View(club);
         }
 
-        [Authorize(Roles = "admin")] // Restrict access to admin users
         public IActionResult Create()
         {
             var curUserId = _httpContextAccessor.HttpContext.User.GetUserId();
@@ -40,7 +39,6 @@ namespace GroupRun.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")] // Restrict access to admin users
         public async Task<IActionResult> Create(CreateClubViewModel clubView)
         {
             if (clubView.Image == null)
@@ -81,56 +79,8 @@ namespace GroupRun.Controllers
 
             return RedirectToAction("Index");
         }
-        //[HttpGet]
-        //public IActionResult Create()
-        //{
-        //    var curUserId = _httpContextAccessor.HttpContext.User.GetUserId();
-        //    var createClubViewModel = new CreateClubViewModel { AppUserId = curUserId };
-        //    return View(createClubViewModel);
-        //}
 
-        //[HttpPost]
-        //public async Task<IActionResult> Create(CreateClubViewModel clubView)
-        //{
-        //    if (clubView.Image == null)
-        //    {
-        //        ModelState.AddModelError("Image", "Image is required.");
-        //    }
-
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return View(clubView);
-        //    }
-
-        //    string newFileName = DateTime.Now.ToString("yyyyMMddHHmmssfff") + Path.GetExtension(clubView.Image!.FileName);
-
-        //    string imageFullPath = Path.Combine(_environment.WebRootPath, "Images", newFileName);
-        //    using (var stream = System.IO.File.Create(imageFullPath))
-        //    {
-        //        await clubView.Image.CopyToAsync(stream);
-        //    }
-
-        //    var club = new Club
-        //    {
-        //        Title = clubView.Title,
-        //        Description = clubView.Description,
-        //        Image = "/Images/" + newFileName,
-        //        ClubCategory = clubView.ClubCategory,
-        //        AppUserId = clubView.AppUserId,
-        //        Address = new Address
-        //        {
-        //            Street = clubView.Address.Street,
-        //            City = clubView.Address.City,
-        //            State = clubView.Address.State,
-        //        }
-        //    };
-
-        //    _clubRepository.Add(club);
-        //    _clubRepository.Save();
-
-        //    return RedirectToAction("Index");
-        //}
-
+        [Authorize(Roles = "admin")]
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
@@ -164,6 +114,8 @@ namespace GroupRun.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Edit(int id, EditClubViewModel clubView)
         {
             var club = await _clubRepository.GetByIdAsyncNoTracking(id);
@@ -216,6 +168,7 @@ namespace GroupRun.Controllers
             return RedirectToAction("Index", "Club");
         }
 
+        [Authorize(Roles = "admin")]
         [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
@@ -228,7 +181,9 @@ namespace GroupRun.Controllers
             return View(club);
         }
 
-        [HttpPost]
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var club = await _clubRepository.GetByIdAsync(id);
