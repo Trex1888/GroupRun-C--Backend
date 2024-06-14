@@ -8,197 +8,199 @@ namespace GroupRun.Controllers
     public class RaceController : Controller
     {
         private readonly IRaceRepository _raceRepository;
-        private readonly IWebHostEnvironment _environment;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IPhotoService _photoService;
 
-        public RaceController(IRaceRepository raceRepo, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor)
+        public RaceController(IRaceRepository raceRepo, IHttpContextAccessor httpContextAccessor, IPhotoService photoService)
         {
             _raceRepository = raceRepo;
-            _environment = environment;
             _httpContextAccessor = httpContextAccessor;
+            _photoService = photoService;
         }
 
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            IEnumerable<Race> races = await _raceRepository.GetAll();
+            IEnumerable<Race> races = await _raceRepository.GetAllAsync();
             return View(races);
         }
 
         [HttpGet]
         public async Task<IActionResult> Detail(int id)
         {
-            Race race = await _raceRepository.GetByIdAsync(id);
+            var race = await _raceRepository.GetByIdAsync(id);
+            if (race == null)
+            {
+                return NotFound();
+            }
             return View(race);
         }
 
         [HttpGet]
         public IActionResult Create()
         {
-            var curUserId = _httpContextAccessor.HttpContext.User.GetUserId();
-            var createRaceViewModel = new CreateRaceViewModel { AppUserId = curUserId };
-
+            var curUserID = _httpContextAccessor.HttpContext?.User.GetUserId();
+            var createRaceViewModel = new CreateRaceViewModel { AppUserId = curUserID };
             return View(createRaceViewModel);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CreateRaceViewModel raceView)
+        public async Task<IActionResult> Create(CreateRaceViewModel raceViewModel)
         {
-            if (raceView.Image == null)
+            if (ModelState.IsValid)
             {
-                ModelState.AddModelError("Image", "Image is required.");
-            }
-
-            if (!ModelState.IsValid)
-            {
-                return View(raceView);
-            }
-
-            string newFileName = DateTime.Now.ToString("yyyyMMddHHmmssfff") + Path.GetExtension(raceView.Image!.FileName);
-
-            string imageFullPath = Path.Combine(_environment.WebRootPath, "Images", newFileName);
-            using (var stream = System.IO.File.Create(imageFullPath))
-            {
-                await raceView.Image.CopyToAsync(stream);
-            }
-
-            var race = new Race
-            {
-                Title = raceView.Title,
-                Description = raceView.Description,
-                Image = "/Images/" + newFileName,
-                RaceCategory = raceView.RaceCategory,
-                AppUserId = raceView.AppUserId,
-                Address = new Address
+                if (raceViewModel.Image != null)
                 {
-                    Street = raceView.Address.Street,
-                    City = raceView.Address.City,
-                    State = raceView.Address.State,
+                    var result = await _photoService.AddPhotoAsync(raceViewModel.Image);
+                    if (result.Error != null)
+                    {
+                        ModelState.AddModelError("", "Photo upload failed");
+                        return View(raceViewModel);
+                    }
+
+                    var race = new Race
+                    {
+                        Title = raceViewModel.Title,
+                        Description = raceViewModel.Description,
+                        Image = result.Url.ToString(),
+                        RaceCategory = raceViewModel.RaceCategory,
+                        AppUserId = raceViewModel.AppUserId,
+                        Address = new Address
+                        {
+                            Street = raceViewModel.Address.Street,
+                            City = raceViewModel.Address.City,
+                            State = raceViewModel.Address.State,
+                        }
+                    };
+
+                    await _raceRepository.AddAsync(race);
+
+                    return RedirectToAction("Index");
                 }
-            };
+                else
+                {
+                    ModelState.AddModelError("", "Please upload an image");
+                }
+            }
 
-            _raceRepository.Add(race);
-            _raceRepository.Save();
-
-            return RedirectToAction("Index");
+            return View(raceViewModel);
         }
 
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var race = await _raceRepository.GetByIdAsync(id);
-
             if (race == null)
             {
-                return RedirectToAction("Index", "Race");
+                return NotFound();
             }
 
-            var raceView = new EditRaceViewModel()
+            var raceViewModel = new EditRaceViewModel
             {
-                Id = race.Id,
                 Title = race.Title,
                 Description = race.Description,
                 AddressId = race.AddressId,
-                RaceCategory = race.RaceCategory,
-                Address = new Address
-                {
-                    Street = race.Address.Street,
-                    City = race.Address.City,
-                    State = race.Address.State
-                },
-                CurrentImage = race.Image
+                Address = race.Address,
+                URL = race.Image,
+                RaceCategory = race.RaceCategory
             };
 
-            ViewData["RaceId"] = raceView.Id;
-            ViewData["Image"] = race.Image;
-
-            return View(raceView);
+            return View(raceViewModel);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Edit(int id, EditRaceViewModel raceView)
+        public async Task<IActionResult> Edit(int id, EditRaceViewModel clubRaceModel)
         {
-            var race = await _raceRepository.GetByIdAsyncNoTracking(id);
-
-            if (race == null)
-            {
-                return RedirectToAction("Index", "Club");
-            }
-
             if (!ModelState.IsValid)
             {
-                ViewData["ClubId"] = race.Id;
-                ViewData["Image"] = race.Image;
-
-                return View(raceView);
+                ModelState.AddModelError("", "Failed to edit club");
+                return View("Edit", clubRaceModel);
             }
 
-            string newFileName = race.Image;
-            if (raceView.Image != null)
+            var userClub = await _raceRepository.GetByIdAsyncNoTracking(id);
+            if (userClub == null)
             {
-                newFileName = DateTime.Now.ToString("yyyyMMddHHmmssfff") + Path.GetExtension(raceView.Image.FileName);
-                string imageFullPath = Path.Combine(_environment.WebRootPath, "Images", newFileName);
-
-                using (var stream = new FileStream(imageFullPath, FileMode.Create))
-                {
-                    await raceView.Image.CopyToAsync(stream);
-                }
-
-                if (!string.IsNullOrEmpty(race.Image))
-                {
-                    string oldImageFullPath = Path.Combine(_environment.WebRootPath, "Images", race.Image);
-                    if (System.IO.File.Exists(oldImageFullPath))
-                    {
-                        System.IO.File.Delete(oldImageFullPath);
-                    }
-                }
+                return NotFound();
             }
 
-            race.Title = raceView.Title;
-            race.Description = raceView.Description;
-            race.Address.Street = raceView.Address.Street;
-            race.Address.City = raceView.Address.City;
-            race.Address.State = raceView.Address.State;
-            race.RaceCategory = raceView.RaceCategory;
-            race.Image = "/Images/" + newFileName;
+            if (clubRaceModel.Image != null)
+            {
+                var photoResult = await _photoService.AddPhotoAsync(clubRaceModel.Image);
+                if (photoResult.Error != null)
+                {
+                    ModelState.AddModelError("Image", "Photo upload failed");
+                    return View(clubRaceModel);
+                }
 
-            _raceRepository.Update(race);
-            _raceRepository.Save();
+                if (!string.IsNullOrEmpty(userClub.Image))
+                {
+                    _ = await _photoService.DeletePhotoAsync(userClub.Image);
+                }
 
-            return RedirectToAction("Index", "Race");
+                var race = new Race
+                {
+                    Id = id,
+                    Title = clubRaceModel.Title,
+                    Description = clubRaceModel.Description,
+                    Image = photoResult.Url.ToString(),
+                    AddressId = clubRaceModel.AddressId,
+                    Address = clubRaceModel.Address,
+                    RaceCategory = clubRaceModel.RaceCategory,
+                };
+
+                await _raceRepository.UpdateAsync(race);
+            }
+            else
+            {
+                var race = new Race
+                {
+                    Id = id,
+                    Title = clubRaceModel.Title,
+                    Description = clubRaceModel.Description,
+                    AddressId = clubRaceModel.AddressId,
+                    Address = clubRaceModel.Address,
+                };
+
+                await _raceRepository.UpdateAsync(race);
+            }
+
+            return RedirectToAction("Index");
         }
 
         [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
-            var race = await _raceRepository.GetByIdAsync(id);
-            if (race == null)
+            var raceDetails = await _raceRepository.GetByIdAsync(id);
+            if (raceDetails == null)
             {
-                return RedirectToAction("Index", "Race");
+                return NotFound();
             }
 
-            return View(race);
+            return View(raceDetails);
         }
 
-        [HttpPost]
+        [HttpPost, ActionName("DeleteConfirmed")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var race = await _raceRepository.GetByIdAsync(id);
             if (race == null)
             {
-                return RedirectToAction("Index", "Race");
+                return RedirectToAction("Index");
             }
 
-            string imageFullPath = Path.Combine(_environment.WebRootPath, "Images", race.Image);
-            if (System.IO.File.Exists(imageFullPath))
+            if (!string.IsNullOrEmpty(race.Image))
             {
-                System.IO.File.Delete(imageFullPath);
+                var deletionResult = await _photoService.DeletePhotoAsync(race.Image);
+                if (deletionResult.Result != "ok")
+                {
+                    ModelState.AddModelError("", "Failed to delete photo");
+                    // Handle deletion failure (log, show error message, etc.)
+                }
             }
 
-            _raceRepository.Delete(race);
-            _raceRepository.Save();
+            await _raceRepository.DeleteAsync(race);
 
-            return RedirectToAction("Index", "Race");
+            return RedirectToAction("Index");
         }
     }
 }

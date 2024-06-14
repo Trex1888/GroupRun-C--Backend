@@ -4,13 +4,13 @@ namespace GroupRun.Interfaces
 {
     public interface IRaceRepository
     {
-        Task<IEnumerable<Race>> GetAll();
+        Task<IEnumerable<Race>> GetAllAsync();
         Task<Race> GetByIdAsync(int id);
         Task<Race> GetByIdAsyncNoTracking(int id);
-        Task<IEnumerable<Race>> GetRaceByCity(string city);
-        bool Add(Race race);
-        bool Update(Race race);
-        bool Delete(Race race);
-        bool Save();
+        Task<IEnumerable<Race>> GetClubByCityAsync(string city);
+        Task<bool> AddAsync(Race race);
+        Task<bool> UpdateAsync(Race race);
+        Task<bool> DeleteAsync(Race race);
+        Task<bool> SaveAsync();
     }
 }

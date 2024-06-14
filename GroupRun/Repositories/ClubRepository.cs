@@ -11,54 +11,68 @@ namespace GroupRun.Repositories
 
         public ClubRepository(ApplicationDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public bool Add(Club club)
+        public async Task<bool> AddAsync(Club club)
         {
-            _context.Add(club);
-            return Save();
+            await _context.AddAsync(club);
+            return await SaveAsync();
         }
 
-        public bool Delete(Club club)
+        public async Task<bool> DeleteAsync(Club club)
         {
             _context.Remove(club);
-            return Save();
+            return await SaveAsync();
         }
 
-        public async Task<IEnumerable<Club>> GetAll()
+        public async Task<IEnumerable<Club>> GetAllAsync()
         {
             return await _context.Clubs.ToListAsync();
         }
 
         public async Task<Club> GetByIdAsync(int id)
         {
-            return await _context.Clubs.Include(i => i.Address).FirstOrDefaultAsync(i => i.Id == id);
+            return await _context.Clubs
+                .Include(i => i.Address)
+                .FirstOrDefaultAsync(i => i.Id == id);
         }
 
         public async Task<Club> GetByIdAsyncNoTracking(int id)
         {
-            return await _context.Clubs.Include(i => i.Address).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            return await _context.Clubs
+                  .Include(i => i.Address)
+                  .AsNoTracking()
+                  .FirstOrDefaultAsync(x => x.Id == id);
         }
 
-        public async Task<IEnumerable<Club>> GetClubByCity(string city)
+        public async Task<IEnumerable<Club>> GetClubByCityAsync(string city)
         {
-            return await _context.Clubs.Where(c => c.Address.City.Contains(city)).ToListAsync();
+            return await _context.Clubs
+                .Where(c => c.Address.City.Contains(city))
+                .ToListAsync();
         }
 
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            var saved = _context.SaveChanges();
-            return saved > 0;
+            try
+            {
+                return await _context.SaveChangesAsync() > 0;
+            }
+            catch (DbUpdateException)
+            {
+                return false;
+            }
         }
 
-        public bool Update(Club club)
+        public async Task<bool> UpdateAsync(Club club)
         {
             _context.Update(club);
-            return Save();
+            return await SaveAsync();
         }
     }
 }
+
 
 
 
