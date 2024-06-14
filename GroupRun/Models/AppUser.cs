@@ -9,6 +9,7 @@ namespace GroupRun.Models
         public int? Mileage { get; set; }
         public string? ProfileImageUrl { get; set; }
         public string? City { get; set; }
+        public string? Description { get; set; }
         public string? State { get; set; }
         [ForeignKey("Address")]
         public int? AddressId { get; set; }

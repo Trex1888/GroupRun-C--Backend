@@ -12,11 +12,12 @@
                             <tr class="bg-white">
                                 <th scope="row">
                                     <div class="media align-items-center">
-                                     <img alt="Image profile avatar" src="@user.ProfileImageUrl" class="avatar">
-                                       <div class="media-body">
+                                        <img alt="Image" src="@user.ProfileImageUrl" style="width: 64px; height: 64px; object-fit: cover; border-radius: 50%;" />
+                                        <div class="media-body ml-2">
                                             <span class="h6 mb-0">@user.UserName</span>
                                         </div>
                                     </div>
+
                                 </th>
                                 <td>
                                     <a class="btn btn-outline-primary" asp-controller="User" asp-action="Detail" asp-route-id="@user.Id">
@@ -25,10 +26,10 @@
                                 </td>
 
                                 @{
-                                    var mileage = user.Mileage == null ? "?" : user.Mileage.ToString();
-                                    var pace = user.Pace == null ? "?" : user.Mileage.ToString();
+                                    var mileage = user.Mileage == null ? "0" : user.Mileage.ToString();
+                                    var pace = user.Pace == null ? "0" : user.Pace.ToString();
                                 }
-                                <td>@mileage mile at @pace mph</td>
+                                <td>@mileage Miles at @pace MPH</td>
                                @*<td><i class="icon-location"></i> @user.Location</td>*@
                           </tr>
                             <tr class="table-divider">

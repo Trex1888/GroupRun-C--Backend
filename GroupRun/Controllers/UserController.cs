@@ -8,123 +8,65 @@ namespace GroupRun.Controllers
 {
     public class UserController : Controller
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IDashboardRepository _dashboardRepository;
+        private readonly IUserService _userService;
         private readonly UserManager<AppUser> _userManager;
 
-        public UserController(IUserRepository userRepository, IHttpContextAccessor contextAccessor, IDashboardRepository dashboardRepository, UserManager<AppUser> userManager)
+        public UserController(IUserService userService, UserManager<AppUser> userManager)
         {
-            _userRepository = userRepository;
-            _httpContextAccessor = contextAccessor;
-            _dashboardRepository = dashboardRepository;
+            _userService = userService;
             _userManager = userManager;
         }
 
         [HttpGet("users")]
         public async Task<IActionResult> Index()
         {
-            var users = await _userRepository.GetAllUsers();
-            List<UserViewModel> result = new List<UserViewModel>();
-            foreach (var user in users)
-            {
-                var userViewModel = new UserViewModel()
-                {
-                    Id = user.Id,
-                    Pace = user.Pace,
-                    Mileage = user.Mileage,
-                    UserName = user.UserName,
-                    ProfileImageUrl = user.ProfileImageUrl
-                };
-                result.Add(userViewModel);
-            }
-
-            return View(result);
+            var usersViewModel = await _userService.GetAllUsersViewModels();
+            return View(usersViewModel);
         }
 
-        [HttpGet]
+        [HttpGet("users/{id}")]
         public async Task<IActionResult> Detail(string id)
         {
-            var user = await _userRepository.GetUserById(id);
-            if (user == null)
+            var userDetailViewModel = await _userService.GetUserDetailViewModel(id);
+            if (userDetailViewModel == null)
             {
-                return RedirectToAction("Index", "Users");
+                return RedirectToAction("Index", "Home"); // Or any other appropriate action
             }
-
-            var userDetailViewModel = new UserDetailViewModel()
-            {
-                Id = user.Id,
-                Pace = user.Pace,
-                Mileage = user.Mileage,
-                UserName = user.UserName,
-            };
 
             return View(userDetailViewModel);
         }
 
-        [HttpGet]
-
+        [HttpGet("users/edit")]
         public async Task<IActionResult> EditProfile()
         {
-            var curUserId = _httpContextAccessor.HttpContext.User.GetUserId();
-            var user = await _dashboardRepository.GetUserById(curUserId);
+            var userId = _userManager.GetUserId(User); // Get the current user's ID
 
-            if (user == null)
+            var editProfileViewModel = await _userService.GetEditProfileViewModel(userId);
+            if (editProfileViewModel == null)
             {
-                return View("EditProfile");
+                return NotFound();
             }
-
-            var editProfileViewModel = new EditProfileViewModel()
-            {
-                Id = curUserId,
-                Pace = user.Pace,
-                Mileage = user.Mileage,
-                City = user.City,
-                State = user.State,
-                ProfileImageUrl = user.ProfileImageUrl,
-            };
 
             return View(editProfileViewModel);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> EditProfile(EditProfileViewModel editProfileViewModel)
+        [HttpPost("users/edit")]
+        [ValidateAntiForgeryToken] // Always use AntiForgeryToken in POST requests for security
+        public async Task<IActionResult> EditProfile(EditProfileViewModel editViewModel, IFormFile image)
         {
             if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("", "Failed to edit profile");
-                return View("EditProfile", editProfileViewModel);
+                return View(editViewModel); // Return the view with errors if model state is invalid
             }
 
-            var user = await _dashboardRepository.GetByIdNoTracking(editProfileViewModel.Id);
-
-            if (user == null)
+            var success = await _userService.UpdateUserProfile(editViewModel, image);
+            if (!success)
             {
-                return View(editProfileViewModel);
+                ModelState.AddModelError("", "Failed to update profile"); // Add model-level error
+                return View(editViewModel);
             }
 
-            if (editProfileViewModel.Image != null) // only update profile image
-            {
-                var imageBytes = await ConvertImageToByteArrayAsync(editProfileViewModel.Image);
-                var base64String = Convert.ToBase64String(imageBytes);
-
-                user.ProfileImageUrl = base64String;
-
-                await _userManager.UpdateAsync(user);
-
-                return View(editProfileViewModel);
-            }
-
-            return RedirectToAction("Detail", "User", new { user.Id });
-        }
-
-        private static async Task<byte[]> ConvertImageToByteArrayAsync(IFormFile image)
-        {
-            using (var memoryStream = new MemoryStream())
-            {
-                await image.CopyToAsync(memoryStream);
-                return memoryStream.ToArray();
-            }
+            return RedirectToAction("Detail", "User", new { id = editViewModel.Id });
         }
     }
 }
